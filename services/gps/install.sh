@@ -1,12 +1,13 @@
 #!/bin/bash
 # Script: install.sh
-# Description: Installs the Kombi O.S. GPS Service
+# Description: Installs the Kombi O.S. GPS Service with virtual environment
 
 LOG_DIR=/var/log/kombios/gps
 LOG_FILE=$LOG_DIR/data.log
 SERVICE_FILE=/etc/systemd/system/kombios-gps-service.service
 SCRIPT_FILE=/usr/local/bin/kombios-gps-service.py
 USER_NAME=kombios
+VENV_DIR=/opt/kombios/venv
 
 echo "=== Starting Kombi O.S. GPS Service installation ==="
 
@@ -27,6 +28,17 @@ sudo chown $USER_NAME:$USER_NAME $LOG_DIR
 echo "Creating log file: $LOG_FILE"
 sudo touch $LOG_FILE
 sudo chown $USER_NAME:$USER_NAME $LOG_FILE
+
+# Create virtual environment directory
+echo "Creating virtual environment at $VENV_DIR"
+sudo mkdir -p $VENV_DIR
+sudo chown $USER_NAME:$USER_NAME $VENV_DIR
+sudo -u $USER_NAME python3 -m venv $VENV_DIR
+
+# Install required Python packages inside venv
+echo "Installing required Python packages in venv"
+sudo -u $USER_NAME $VENV_DIR/bin/pip install --upgrade pip
+sudo -u $USER_NAME $VENV_DIR/bin/pip install -r requirements.txt
 
 # Copy Python script
 echo "Copying Python script to $SCRIPT_FILE"
