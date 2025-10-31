@@ -1,0 +1,67 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtualenv
+venv/
+.env/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Arquivos de log e cache
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.DS_Store
+.cache/
+.pytest_cache/
+.mypy_cache/
+coverage/
+htmlcov/
+.tox/
+.nox/
+dist/
+build/
+docs/_build/
+pip-wheel-metadata/
+*.egg-info/
+*.egg
+
+# Configurações do Jupyter Notebook
+.ipynb_checkpoints
+
+# Arquivos de configuração locais
+*.local
+*.env
+.env.*
+
+# --- PyCharm ---
+# Diretório de configurações do projeto
+.idea/
+
+# --- Testes ---
+.coverage
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# --- Docker ---
+# Se o projeto usa Docker
+*.pid
+docker-compose.override.yml
+
+# --- Outros ---
+# Arquivos temporários de sistema
+Thumbs.db
+ehthumbs.db
+desktop.ini

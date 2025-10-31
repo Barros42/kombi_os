@@ -1,0 +1,5 @@
+psutil
+rich
+requests
+pyserial
+pynmea2
