@@ -1,0 +1,57 @@
+#!/bin/bash
+# Script: install.sh
+# Description: Installs the Kombi O.S. GPS Service
+
+LOG_DIR=/var/log/kombios/gps
+LOG_FILE=$LOG_DIR/data.log
+SERVICE_FILE=/etc/systemd/system/kombios-gps-service.service
+SCRIPT_FILE=/usr/local/bin/kombios-gps-service.py
+USER_NAME=kombios
+
+echo "=== Starting Kombi O.S. GPS Service installation ==="
+
+# Create dedicated user (if it doesn't exist)
+if ! id -u $USER_NAME >/dev/null 2>&1; then
+    echo "Creating dedicated user: $USER_NAME"
+    sudo useradd -r -s /bin/false $USER_NAME
+else
+    echo "User $USER_NAME already exists"
+fi
+
+# Create log directory
+echo "Creating log directory: $LOG_DIR"
+sudo mkdir -p $LOG_DIR
+sudo chown $USER_NAME:$USER_NAME $LOG_DIR
+
+# Create empty log file
+echo "Creating log file: $LOG_FILE"
+sudo touch $LOG_FILE
+sudo chown $USER_NAME:$USER_NAME $LOG_FILE
+
+# Copy Python script
+echo "Copying Python script to $SCRIPT_FILE"
+sudo cp ./kombios-gps-service.py $SCRIPT_FILE
+sudo chmod +x $SCRIPT_FILE
+sudo chown $USER_NAME:$USER_NAME $SCRIPT_FILE
+
+# Copy systemd service file
+echo "Copying systemd service file to $SERVICE_FILE"
+sudo cp ./kombios-gps-service.service $SERVICE_FILE
+
+# Reload systemd
+echo "Reloading systemd daemon"
+sudo systemctl daemon-reload
+
+# Enable service at boot
+echo "Enabling service at boot"
+sudo systemctl enable kombios-gps-service.service
+
+# Start service immediately
+echo "Starting service now"
+sudo systemctl start kombios-gps-service.service
+
+# Show service status
+echo "Checking service status"
+sudo systemctl status kombios-gps-service.service
+
+echo "=== Installation complete ==="

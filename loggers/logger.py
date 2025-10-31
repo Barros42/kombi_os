@@ -23,7 +23,7 @@ def get_logger(name: str = "kombios"):
     if not logger.handlers:
         logger.setLevel(logging.INFO)
         handler = RotatingFileHandler(
-            "/home/admin/kombi/kombios.log",
+            "/home/kombios/kombi_os/kombios.log",
             maxBytes=2_000_000,  # 2MB
             backupCount=5
         )

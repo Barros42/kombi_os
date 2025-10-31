@@ -32,7 +32,7 @@ time_service = TimeService()
 gps_service = GpsService()
 
 
-ASCII_PATH = "/home/admin/kombi/files/ascii/kombi_ascii.txt"
+ASCII_PATH = "/home/kombios/kombi_os/files/ascii/kombi_ascii.txt"
 def read_ascii_art():
     if os.path.exists(ASCII_PATH):
         with open(ASCII_PATH, "r") as f:
@@ -65,13 +65,17 @@ def build_raspberry_pi_grid():
 
 def build_gps_grid():
     
-    
-    
-    lat, lon = gps_service.get_gps_coords()
-    gps_data = f"{lat}, {lon}"
-    
-    data = gps_service.get_data_from_coords(lat,lon)
-    
+    gps_response = gps_service.get_gps_coords()
+
+    lat = gps_response.get("lat", 0)
+    lon = gps_response.get("lon", 0)
+    raw_message = gps_response.get("raw_message", "")
+    num_satellites = gps_response.get("num_satellites", 0)
+
+    is_lat_lon_defined = lat is not None and lon is not None
+    gps_data = f"{lat}, {lon}" if is_lat_lon_defined else "No Singnal 🔴"
+
+    data = gps_service.get_data_from_coords(lat,lon) if is_lat_lon_defined else {}
     city = data.get('address', {}).get('city', 'Not Found')
     state = data.get('address', {}).get('state', 'Not Found')
     road = data.get('address', {}).get('road', 'Not Found')
@@ -83,7 +87,8 @@ def build_gps_grid():
     grid.add_column(justify="left")
     grid.add_column(justify="right")
 
-    grid.add_row("📍 Lat/Lon", f"{lat}, {lon}")
+    grid.add_row("🛰️ Satellites", f"{num_satellites}")
+    grid.add_row("📍 Lat/Lon", f"{gps_data}")
     grid.add_row("🌎 State", f"{state}")
     grid.add_row("🏘️ City", f"{city}")
     grid.add_row("🛣️ Street", f"{road}")
@@ -171,7 +176,7 @@ def main():
             "next_due": 0.0,
         },
         "gps": {
-            "interval": 5.0,
+            "interval": 1.0,
             "ref": gps_ref,
             "title": "GPS 🧭",
             "builder": build_gps_grid,
