@@ -7,6 +7,8 @@ import serial
 import pynmea2
 from loggers.logger import logger
 
+CURRENT_POSITION_FILE = "/var/log/kombios/gps/current.position"
+
 class GpsService:
     def __init__(self, cache_file="/tmp/geo_cache.db"):
         self.url = "https://nominatim.openstreetmap.org/reverse"
@@ -37,10 +39,8 @@ class GpsService:
             "num_satellites": 0
         }
 
-        log_file = "/var/log/kombios/gps/data.log"
-
         try:
-            with open(log_file, "r") as f:
+            with open(CURRENT_POSITION_FILE, "r") as f:
                 last_line = f.readlines()[-1].strip()
 
             data = json.loads(last_line)

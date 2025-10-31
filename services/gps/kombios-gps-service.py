@@ -2,6 +2,7 @@
 import os
 import time
 
+import struct
 import pynmea2
 import serial 
 
@@ -11,10 +12,14 @@ from datetime import datetime, date
 
 SERIAL_PORT = "/dev/serial0" 
 BAUD_RATE = 9600
-LOG_FILE = "/var/log/kombios/gps/data.log"
+HISTORIC_POSITION_FILE = "/var/log/kombios/gps/historic.position"
+LAST_POSITION_FILE = "/var/log/kombios/gps/last.position"
+CURRENT_POSITION_FILE = "/var/log/kombios/gps/current.position"
 
 # Garantir que o diretório do log exista
-os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+os.makedirs(os.path.dirname(HISTORIC_POSITION_FILE), exist_ok=True)
+os.makedirs(os.path.dirname(LAST_POSITION_FILE), exist_ok=True)
+os.makedirs(os.path.dirname(CURRENT_POSITION_FILE), exist_ok=True)
 
 class GpsData(BaseModel):
     timestamp: Optional[str] = Field(None, description="GPS fix timestamp")
@@ -76,7 +81,17 @@ def read_gps():
                         gps_data.gps_qual = int(msg.gps_qual)  
 
                     if (gps_data.status == "V") or gps_data.all_fields_non_null():
-                        with open(LOG_FILE, "a") as f:
+
+                        if gps_data.all_fields_non_null():
+                            with open(LAST_POSITION_FILE,"r+") as f:
+                                f.truncate(0)
+                                f.write(f"{gps_data.json()}\n")
+
+                        with open(CURRENT_POSITION_FILE, "r+") as f:
+                            f.truncate(0)
+                            f.write(f"{gps_data.json()}\n")
+
+                        with open(HISTORIC_POSITION_FILE, "a") as f:
                             f.write(f"{gps_data.json()}\n")
                             gps_data.reset()
 
@@ -85,8 +100,7 @@ def read_gps():
                     print(f"Error: {e}")
                     pass
     except Exception as e:
-        with open(LOG_FILE, "a") as f:
-            f.write(f"Erro: {e}\n")
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     read_gps()

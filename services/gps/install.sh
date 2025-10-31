@@ -3,7 +3,11 @@
 # Description: Installs the Kombi O.S. GPS Service with virtual environment
 
 LOG_DIR=/var/log/kombios/gps
-LOG_FILE=$LOG_DIR/data.log
+
+CURRENT_POSITION_FILE=$LOG_DIR/current.position
+LAST_POSITION_FILE=$LOG_DIR/last.position
+HISTORIC_POSITION_FILE=$LOG_DIR/historic.position
+
 SERVICE_FILE=/etc/systemd/system/kombios-gps-service.service
 SCRIPT_FILE=/usr/local/bin/kombios-gps-service.py
 USER_NAME=kombios
@@ -25,9 +29,19 @@ sudo mkdir -p $LOG_DIR
 sudo chown $USER_NAME:$USER_NAME $LOG_DIR
 
 # Create empty log file
-echo "Creating log file: $LOG_FILE"
-sudo touch $LOG_FILE
-sudo chown $USER_NAME:$USER_NAME $LOG_FILE
+echo "Creating current position log file: $CURRENT_POSITION_FILE"
+sudo touch $CURRENT_POSITION_FILE
+sudo chown $USER_NAME:$USER_NAME $CURRENT_POSITION_FILE
+
+# Create empty log file
+echo "Creating last position log file: $LAST_POSITION_FILE"
+sudo touch $LAST_POSITION_FILE
+sudo chown $USER_NAME:$USER_NAME $LAST_POSITION_FILE
+
+# Create empty log file
+echo "Creating historic log file: $HISTORIC_POSITION_FILE"
+sudo touch $HISTORIC_POSITION_FILE
+sudo chown $USER_NAME:$USER_NAME $HISTORIC_POSITION_FILE
 
 # Create virtual environment directory
 echo "Creating virtual environment at $VENV_DIR"
