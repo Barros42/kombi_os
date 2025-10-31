@@ -75,10 +75,11 @@ def read_gps():
                     if hasattr(msg, "gps_qual"):
                         gps_data.gps_qual = int(msg.gps_qual)  
 
-                    if gps_data.all_fields_non_null():
+                    if (gps_data.status == "V") or gps_data.all_fields_non_null():
                         with open(LOG_FILE, "a") as f:
                             f.write(f"{gps_data.json()}\n")
                             gps_data.reset()
+
 
                 except Exception as e:
                     print(f"Error: {e}")
