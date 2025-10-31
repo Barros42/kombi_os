@@ -1,4 +1,5 @@
 import io
+import json
 import requests
 import shelve
 import hashlib
@@ -26,8 +27,8 @@ class GpsService:
             decimal *= -1
         return round(decimal, 6)
 
-    def get_gps_coords(self, port="/dev/serial0", baud=9600):
-        """Lê da serial e retorna a primeira latitude/longitude válidas."""
+    def get_gps_coords(self):
+        """Lê a última linha do arquivo de log e retorna latitude/longitude válidas."""
 
         gps_response = {
             "lat": 0,
@@ -36,22 +37,22 @@ class GpsService:
             "num_satellites": 0
         }
 
-        with serial.Serial(port, baud, timeout=1) as ser:
-            while True:
-                line = ser.readline().decode('ascii', errors='replace').strip()
-                
-                if line.startswith('$GPGGA') or line.startswith('$GPRMC'):
-                    try:
-                        msg = pynmea2.parse(line)
-                        gps_response["raw_message"] = msg
+        log_file = "/var/log/kombios/gps/data.log"
 
-                        if hasattr(msg, 'lat') and hasattr(msg, 'lon') and hasattr(msg, 'num_sats') and msg.lat and msg.lon and msg.num_sats:
-                            gps_response["lat"] = self.dm_to_decimal(msg.lat, msg.lat_dir)
-                            gps_response["lon"] = self.dm_to_decimal(msg.lon, msg.lon_dir)
-                            gps_response["num_satellites"] = msg.num_sats
-                            return gps_response
-                    except pynmea2.ParseError:
-                        continue
+        try:
+            with open(log_file, "r") as f:
+                last_line = f.readlines()[-1].strip()
+
+            data = json.loads(last_line)
+            gps_response["lat"] = round(float(data["latitude"]), 5)
+            gps_response["lon"] = round(float(data["longitude"]), 5)
+            gps_response["num_satellites"] = str(data["num_sats"])
+            gps_response["raw_message"] = data
+
+        except (FileNotFoundError, IndexError, json.JSONDecodeError) as e:
+            print(f"Erro ao ler o log do GPS: {e}")
+
+        return gps_response
 
     
     def _make_key(self, lat, lon):
