@@ -1,68 +1,45 @@
 #!/bin/bash
 # Script: install.sh
-# Description: Installs the Kombi O.S. GPS Service with virtual environment
+# Description: Installs the Kombi O.S. service with virtual environment support
 
-LOG_DIR=/var/log/kombios/gps
+set -euo pipefail
 
-CURRENT_POSITION_FILE=$LOG_DIR/current.position
-LAST_POSITION_FILE=$LOG_DIR/last.position
-HISTORIC_POSITION_FILE=$LOG_DIR/historic.position
+SERVICE_NAME="kombios-gps-service"
+USER_NAME="kombios"
 
-SERVICE_FILE=/etc/systemd/system/kombios-gps-service.service
-SCRIPT_FILE=/usr/local/bin/kombios-gps-service.py
-USER_NAME=kombios
-VENV_DIR=/opt/kombios/venv
+LOG_DIR="/var/log/kombios/gps"
+SCRIPT_FILE="/usr/local/bin/${SERVICE_NAME}.py"
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
-echo "=== Starting Kombi O.S. GPS Service installation ==="
+POSITION_FILES=(
+  "$LOG_DIR/current.position"
+  "$LOG_DIR/last.position"
+  "$LOG_DIR/historic.position"
+)
 
-# Create dedicated user (if it doesn't exist)
-if ! id -u $USER_NAME >/dev/null 2>&1; then
-    echo "Creating dedicated user: $USER_NAME"
-    sudo useradd -r -s /bin/false $USER_NAME
-else
-    echo "User $USER_NAME already exists"
-fi
+echo "=== Starting installation for ${SERVICE_NAME} ==="
 
 # Create log directory
 echo "Creating log directory: $LOG_DIR"
-sudo mkdir -p $LOG_DIR
-sudo chown $USER_NAME:$USER_NAME $LOG_DIR
+sudo mkdir -p "$LOG_DIR"
+sudo chown "$USER_NAME:$USER_NAME" "$LOG_DIR"
 
-# Create empty log file
-echo "Creating current position log file: $CURRENT_POSITION_FILE"
-sudo touch $CURRENT_POSITION_FILE
-sudo chown $USER_NAME:$USER_NAME $CURRENT_POSITION_FILE
-
-# Create empty log file
-echo "Creating last position log file: $LAST_POSITION_FILE"
-sudo touch $LAST_POSITION_FILE
-sudo chown $USER_NAME:$USER_NAME $LAST_POSITION_FILE
-
-# Create empty log file
-echo "Creating historic log file: $HISTORIC_POSITION_FILE"
-sudo touch $HISTORIC_POSITION_FILE
-sudo chown $USER_NAME:$USER_NAME $HISTORIC_POSITION_FILE
-
-# Create virtual environment directory
-echo "Creating virtual environment at $VENV_DIR"
-sudo mkdir -p $VENV_DIR
-sudo chown $USER_NAME:$USER_NAME $VENV_DIR
-sudo -u $USER_NAME python3 -m venv $VENV_DIR
-
-# Install required Python packages inside venv
-echo "Installing required Python packages in venv"
-sudo -u $USER_NAME $VENV_DIR/bin/pip install --upgrade pip
-sudo -u $USER_NAME $VENV_DIR/bin/pip install -r requirements.txt
+# Create empty log files
+for FILE in "${POSITION_FILES[@]}"; do
+  echo "Creating log file: $FILE"
+  sudo touch "$FILE"
+  sudo chown "$USER_NAME:$USER_NAME" "$FILE"
+done
 
 # Copy Python script
 echo "Copying Python script to $SCRIPT_FILE"
-sudo cp ./kombios-gps-service.py $SCRIPT_FILE
-sudo chmod +x $SCRIPT_FILE
-sudo chown $USER_NAME:$USER_NAME $SCRIPT_FILE
+sudo cp "./${SERVICE_NAME}.py" "$SCRIPT_FILE"
+sudo chmod +x "$SCRIPT_FILE"
+sudo chown "$USER_NAME:$USER_NAME" "$SCRIPT_FILE"
 
 # Copy systemd service file
 echo "Copying systemd service file to $SERVICE_FILE"
-sudo cp ./kombios-gps-service.service $SERVICE_FILE
+sudo cp "./${SERVICE_NAME}.service" "$SERVICE_FILE"
 
 # Reload systemd
 echo "Reloading systemd daemon"
@@ -70,14 +47,14 @@ sudo systemctl daemon-reload
 
 # Enable service at boot
 echo "Enabling service at boot"
-sudo systemctl enable kombios-gps-service.service
+sudo systemctl enable "$SERVICE_NAME"
 
 # Start service immediately
-echo "Starting service now"
-sudo systemctl start kombios-gps-service.service
+echo "Starting service"
+sudo systemctl start "$SERVICE_NAME"
 
 # Show service status
 echo "Checking service status"
-sudo systemctl status kombios-gps-service.service
+sudo systemctl status "$SERVICE_NAME"
 
-echo "=== Installation complete ==="
+echo "=== Installation complete for ${SERVICE_NAME} ==="

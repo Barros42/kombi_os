@@ -50,7 +50,7 @@ def read_gps():
             while True:
                 try:
                     nmea_line = ser.readline().decode('utf-8').strip()
-
+                    print(nmea_line)
                     msg = pynmea2.parse(nmea_line)
 
                     if hasattr(msg, "timestamp"):

@@ -111,7 +111,6 @@ def build_network_grid():
     download_speed, upload_speed = network_service.get_network_usage()
     
     grid = Table.grid(expand=True, pad_edge=True)
-    grid.padding = (0, 0, 2, 0)
     
     grid.add_column(justify="left")
     grid.add_column(justify="right")
@@ -131,7 +130,7 @@ def draw_layout() -> Layout:
 
     layout.split_column(
         Layout(name="header", ratio=2),
-        Layout(name="body", ratio=8),
+       #Layout(name="body", ratio=5),
         Layout(name="footer", ratio=1)
     )
 
@@ -160,7 +159,7 @@ def main():
     # agendamento por seção
     SECTIONS = {
         "rasp": {
-            "interval": 1.0,
+            "interval": 2.0,
             "ref": rasp_ref,
             "title": "Raspberry Pi 💻",
             "builder": build_raspberry_pi_grid,
@@ -176,7 +175,7 @@ def main():
             "next_due": 0.0,
         },
         "gps": {
-            "interval": 1.0,
+            "interval": 5.0,
             "ref": gps_ref,
             "title": "GPS 🧭",
             "builder": build_gps_grid,

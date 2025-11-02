@@ -7,6 +7,10 @@ Type=simple
 User=kombios
 Group=kombios
 WorkingDirectory=/usr/local/bin
+
+# Variáveis de ambiente via arquivo .env
+EnvironmentFile=/etc/kombios.env
+
 ExecStart=/opt/kombios/venv/bin/python /usr/local/bin/kombios-gps-service.py
 Restart=always
 RestartSec=5

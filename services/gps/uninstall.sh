@@ -1,38 +1,44 @@
 #!/bin/bash
 # Script: uninstall.sh
-# Description: Removes the Kombi O.S. GPS Service
+# Description: Uninstalls the Kombi O.S. service and associated resources
 
-SERVICE_NAME=kombios-gps-service.service
-SCRIPT_PATH=/usr/local/bin/kombios-gps-service.py
-LOG_DIR=/var/log/kombios/gps
-USER_NAME=kombios
+set -euo pipefail
 
-echo "=== Starting Kombi O.S. GPS Service uninstallation ==="
+SERVICE_NAME="kombios-gps-service"
+USER_NAME="kombios"
 
-# Stop the service
-echo "Stopping the service..."
-sudo systemctl stop $SERVICE_NAME
+LOG_DIR="/var/log/kombios/gps"
+SCRIPT_FILE="/usr/local/bin/${SERVICE_NAME}.py"
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
-# Disable the service
-echo "Disabling the service..."
-sudo systemctl disable $SERVICE_NAME
+echo "=== Starting uninstallation for ${SERVICE_NAME} ==="
 
-# Remove the systemd service file
-echo "Removing the service from systemd... > " $SERVICE_NAME
-sudo rm -f /etc/systemd/system/$SERVICE_NAME
+# Stop the service if it's running
+if systemctl is-active --quiet "$SERVICE_NAME"; then
+  echo "Stopping service: $SERVICE_NAME"
+  sudo systemctl stop "$SERVICE_NAME"
+fi
+
+# Disable service at boot
+if systemctl is-enabled --quiet "$SERVICE_NAME"; then
+  echo "Disabling service at boot"
+  sudo systemctl disable "$SERVICE_NAME"
+fi
+
+# Remove systemd service file
+if [ -f "$SERVICE_FILE" ]; then
+  echo "Removing systemd service file: $SERVICE_FILE"
+  sudo rm -f "$SERVICE_FILE"
+fi
+
+# Reload systemd daemon
+echo "Reloading systemd daemon"
 sudo systemctl daemon-reload
-sudo systemctl reset-failed
 
-# Remove the Python script
-echo "Removing the Python script... > " $SCRIPT_PATH
-sudo rm -f $SCRIPT_PATH
+# Remove Python script
+if [ -f "$SCRIPT_FILE" ]; then
+  echo "Removing script file: $SCRIPT_FILE"
+  sudo rm -f "$SCRIPT_FILE"
+fi
 
-# Remove dedicated user
-echo "Removing dedicated user..."
-sudo userdel -r $USER_NAME 2>/dev/null || echo "User $USER_NAME does not exist"
-
-# Remove log directory
-echo "Removing log directory... >" $LOG_DIR
-sudo rm -rf $LOG_DIR
-
-echo "=== Kombi O.S. GPS Service successfully uninstalled ==="
+echo "=== Uninstallation complete for ${SERVICE_NAME} ==="
