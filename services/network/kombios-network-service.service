@@ -1,5 +1,5 @@
 [Unit]
-Description=Kombi O.S. GPS Service
+Description=Kombi O.S. Network Service
 After=network.target
 
 [Service]
@@ -11,7 +11,7 @@ WorkingDirectory=/usr/local/bin
 # Variáveis de ambiente via arquivo .env
 EnvironmentFile=/etc/kombios.env
 
-ExecStart=/opt/kombios/venv/bin/python /usr/local/bin/kombios/kombios-gps-service.py
+ExecStart=/opt/kombios/venv/bin/python /usr/local/bin/kombios/kombios-network-service.py
 Restart=always
 RestartSec=5
 StandardOutput=journal

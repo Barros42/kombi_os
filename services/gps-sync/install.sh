@@ -8,7 +8,7 @@ SERVICE_NAME="kombios-gps-sync-service"
 USER_NAME="kombios"
 
 LOG_DIR="/var/log/kombios/gps-sync"
-SCRIPT_FILE="/usr/local/bin/${SERVICE_NAME}.py"
+SCRIPT_FILE="/usr/local/bin/kombios/${SERVICE_NAME}.py"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 echo "=== Starting installation for ${SERVICE_NAME} ==="

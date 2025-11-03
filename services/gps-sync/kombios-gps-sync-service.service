@@ -13,7 +13,7 @@ WorkingDirectory=/usr/local/bin
 EnvironmentFile=/etc/kombios.env
 
 # Usa o Python do venv (não precisa “ativar” o venv)
-ExecStart=/opt/kombios/venv/bin/python /usr/local/bin/kombios-gps-sync-service.py
+ExecStart=/opt/kombios/venv/bin/python /usr/local/bin/kombios/kombios-gps-sync-service.py
 
 # Logs no journal
 StandardOutput=journal

@@ -4,17 +4,15 @@
 
 set -euo pipefail
 
-SERVICE_NAME="kombios-gps-service"
+SERVICE_NAME="kombios-network-service"
 USER_NAME="kombios"
 
-LOG_DIR="/var/log/kombios/gps"
+LOG_DIR="/var/log/kombios/network"
 SCRIPT_FILE="/usr/local/bin/kombios/${SERVICE_NAME}.py"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
-POSITION_FILES=(
-  "$LOG_DIR/current.position"
-  "$LOG_DIR/last.position"
-  "$LOG_DIR/historic.position"
+LOG_FILES=(
+  "$LOG_DIR/current.data"
 )
 
 echo "=== Starting installation for ${SERVICE_NAME} ==="
@@ -25,7 +23,7 @@ sudo mkdir -p "$LOG_DIR"
 sudo chown "$USER_NAME:$USER_NAME" "$LOG_DIR"
 
 # Create empty log files
-for FILE in "${POSITION_FILES[@]}"; do
+for FILE in "${LOG_FILES[@]}"; do
   echo "Creating log file: $FILE"
   sudo touch "$FILE"
   sudo chown "$USER_NAME:$USER_NAME" "$FILE"

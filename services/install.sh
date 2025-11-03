@@ -63,6 +63,18 @@ else
   SUDO="sudo"
 fi
 
+# Diretório de destino
+KOMBIOS_BIN_DIR="/usr/local/bin/kombios"
+
+# Criar diretório caso não exista
+if [ ! -d "${KOMBIOS_BIN_DIR}" ]; then
+  echo "Creating directory: ${KOMBIOS_BIN_DIR}"
+  ${SUDO} mkdir -p "${KOMBIOS_BIN_DIR}"
+  ${SUDO} chmod 0755 "${KOMBIOS_BIN_DIR}"
+else
+  echo "Directory already exists: ${KOMBIOS_BIN_DIR}"
+fi
+
 ########################################
 # 1) Ensure system user
 ########################################
@@ -105,8 +117,8 @@ create_env_file() {
   local tmpfile
   tmpfile="$(mktemp)"
   cat > "${tmpfile}" <<'EOF'
-SERVER_URL=secret
-KOMBI_ID=secret
+SERVER_URL=https://api.kombi.digital
+KOMBI_ID=000000000f272617
 PYTHONUNBUFFERED=1
 EOF
 
