@@ -17,7 +17,7 @@ if not SERVER_URL:
     raise RuntimeError("SERVER_URL is not defined")
 
 POST_URL = f"{SERVER_URL}/network"
-CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "5"))  # Default to 5 seconds
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "60"))
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 
 # ==========================
