@@ -1,0 +1,24 @@
+[Unit]
+Description=Kombi O.S. Telemetry Sync Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=kombios
+Group=kombios
+WorkingDirectory=/usr/local/bin
+
+EnvironmentFile=/etc/kombios.env
+
+ExecStart=/opt/kombios/venv/bin/python /usr/local/bin/kombios/kombios-telemetry-sync-service.py
+
+StandardOutput=journal
+StandardError=journal
+
+# Opcional
+# MemoryMax=200M
+# CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

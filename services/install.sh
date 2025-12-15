@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script: bootstrap.sh
+# Script: install.sh
 # Purpose: Prepare KombiOS environment (venv, user, env file), install requirements,
 #          and execute per-service install.sh scripts. Verbose and idempotent.
 
@@ -12,18 +12,38 @@ BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV_DIR="${VENV_DIR:-/opt/kombios/venv}"
 USER_NAME="${USER_NAME:-kombios}"
 ENV_FILE="${ENV_FILE:-/etc/kombios.env}"
-VERBOSE="${VERBOSE:-1}"            # 1 = detailed logs; 0 = quieter
-DEBUG_TRACE="${DEBUG_TRACE:-0}"    # 1 = set -x
+
+# Verbosity levels:
+# 0 = minimal
+# 1 = detailed (default)
+# 2 = very detailed (extra context + env + debug dumps)
+VERBOSE="${VERBOSE:-1}"
+
+# DEBUG_TRACE=1 enables `set -x` (very noisy)
+DEBUG_TRACE="${DEBUG_TRACE:-0}"
+
+# Log files
+LOG_ROOT="${LOG_ROOT:-/var/log/kombios/bootstrap}"
+RUN_ID="${RUN_ID:-$(date +'%Y%m%d-%H%M%S')}"
+MAIN_LOG="${MAIN_LOG:-${LOG_ROOT}/bootstrap-${RUN_ID}.log}"
 
 ########################################
 # Logging utilities
 ########################################
 ts()     { date +"%Y-%m-%d %H:%M:%S%z"; }
-log()    { echo "[$(ts)] [INFO] $*"; }
-warn()   { echo "[$(ts)] [WARN] $*" >&2; }
-error()  { echo "[$(ts)] [ERROR] $*" >&2; }
-run() {  # print + exec with proper arg-splitting (no eval)
-  if [ "${VERBOSE}" = "1" ]; then
+
+_log_line() {
+  local level="$1"; shift
+  echo "[$(ts)] [${level}] $*"
+}
+
+log()    { _log_line "INFO" "$@"; }
+warn()   { _log_line "WARN" "$@" >&2; }
+error()  { _log_line "ERROR" "$@" >&2; }
+
+# Print + exec with proper arg-splitting (no eval)
+run() {
+  if [ "${VERBOSE}" -ge 1 ]; then
     printf '[%s] [RUN ]' "$(ts)"
     for arg in "$@"; do
       printf ' %q' "$arg"
@@ -33,21 +53,116 @@ run() {  # print + exec with proper arg-splitting (no eval)
   "$@"
 }
 
-if [ "${DEBUG_TRACE}" = "1" ]; then set -x; fi
+# Same as run, but tee stdout/stderr to main log (useful for noisy commands)
+run_tee() {
+  if [ "${VERBOSE}" -ge 1 ]; then
+    printf '[%s] [RUN ]' "$(ts)"
+    for arg in "$@"; do
+      printf ' %q' "$arg"
+    done
+    printf '\n'
+  fi
+  # Preserve exit code of the command in a pipeline
+  set +e
+  "$@" 2>&1 | tee -a "${MAIN_LOG}"
+  local rc=${PIPESTATUS[0]}
+  set -e
+  return "${rc}"
+}
+
+# Per-service runner that prefixes each output line with service name, and logs to its own file
+run_service_script() {
+  local service_name="$1"
+  local script_path="$2"
+  local service_dir
+  service_dir="$(dirname "${script_path}")"
+
+  local service_log="${LOG_ROOT}/${service_name}-${RUN_ID}.log"
+
+  log "Service log: ${service_log}"
+  if [ "${VERBOSE}" -ge 1 ]; then
+    log "Executing: ( cd ${service_dir}; bash ./install.sh )"
+  fi
+
+  set +e
+  (
+    cd "${service_dir}"
+    # prefix each line with service name
+    bash "./install.sh" 2>&1 \
+      | awk -v svc="${service_name}" -v tsfmt="$(ts)" '{ print "["strftime("%Y-%m-%d %H:%M:%S%z")"] [SVC:"svc"] " $0 }'
+  ) | tee -a "${service_log}" | tee -a "${MAIN_LOG}"
+  local rc=${PIPESTATUS[0]}
+  set -e
+
+  if [ "${rc}" -ne 0 ]; then
+    error "Service '${service_name}' install failed (exit: ${rc}). See: ${service_log}"
+    return "${rc}"
+  fi
+
+  log "Service '${service_name}' install completed successfully."
+}
 
 ########################################
-# Error trap to show failing line/cmd
+# Enable debug trace if requested
+########################################
+if [ "${DEBUG_TRACE}" = "1" ]; then
+  set -x
+fi
+
+########################################
+# Ensure log dir + redirect main output to log (while still showing on console)
+########################################
+if command -v sudo >/dev/null 2>&1; then
+  SUDO="sudo"
+else
+  SUDO=""
+fi
+
+# Ensure log root exists (best effort)
+if [ -n "${SUDO}" ]; then
+  ${SUDO} mkdir -p "${LOG_ROOT}" || true
+  ${SUDO} chmod 0755 "${LOG_ROOT}" || true
+  ${SUDO} chown "$(id -un):$(id -gn)" "${LOG_ROOT}" 2>/dev/null || true
+else
+  mkdir -p "${LOG_ROOT}" || true
+  chmod 0755 "${LOG_ROOT}" || true
+fi
+
+touch "${MAIN_LOG}" 2>/dev/null || true
+
+# Tee everything printed by this script into the main log
+# (keeps console output + writes to file)
+exec > >(tee -a "${MAIN_LOG}") 2>&1
+
+########################################
+# Error trap to show failing line/cmd + context
 ########################################
 on_error() {
   local exit_code=$?
   error "Script failed at line ${BASH_LINENO[0]} running command: '${BASH_COMMAND}' (exit: ${exit_code})"
+  error "Context: cwd='$(pwd)' user='$(id -un)' uid='$(id -u)' host='$(hostname)'"
+  error "Main log: ${MAIN_LOG}"
+  if [ "${VERBOSE}" -ge 2 ]; then
+    error "Last 50 log lines:"
+    tail -n 50 "${MAIN_LOG}" || true
+  fi
   exit "${exit_code}"
 }
 trap on_error ERR
 
 ########################################
-# 0) Preconditions
+# 0) Preconditions / Context
 ########################################
+log "Bootstrap starting"
+log "Base dir: ${BASE_DIR}"
+log "Run id: ${RUN_ID}"
+log "Main log: ${MAIN_LOG}"
+
+log "Runtime context:"
+run id
+run pwd
+run uname -a || true
+
 if ! command -v python3 >/dev/null 2>&1; then
   error "python3 not found in PATH."
   exit 1
@@ -62,17 +177,24 @@ if ! command -v sudo >/dev/null 2>&1; then
 else
   SUDO="sudo"
 fi
+log "Using sudo: ${SUDO:-no}"
 
-# Diretório de destino
+if [ "${VERBOSE}" -ge 2 ]; then
+  log "Env (sanitized):"
+  env | sort | sed -E 's/(TOKEN|KEY|SECRET|PASSWORD)=.*/\1=***REDACTED***/g' || true
+fi
+
+########################################
+# Directório de destino
+########################################
 KOMBIOS_BIN_DIR="/usr/local/bin/kombios"
 
-# Criar diretório caso não exista
 if [ ! -d "${KOMBIOS_BIN_DIR}" ]; then
-  echo "Creating directory: ${KOMBIOS_BIN_DIR}"
-  ${SUDO} mkdir -p "${KOMBIOS_BIN_DIR}"
-  ${SUDO} chmod 0755 "${KOMBIOS_BIN_DIR}"
+  log "Creating directory: ${KOMBIOS_BIN_DIR}"
+  run ${SUDO} mkdir -p "${KOMBIOS_BIN_DIR}"
+  run ${SUDO} chmod 0755 "${KOMBIOS_BIN_DIR}"
 else
-  echo "Directory already exists: ${KOMBIOS_BIN_DIR}"
+  log "Directory already exists: ${KOMBIOS_BIN_DIR}"
 fi
 
 ########################################
@@ -105,9 +227,9 @@ if [ ! -x "${PIP_BIN}" ]; then
   exit 1
 fi
 
-log "Upgrading pip/setuptools/wheel inside venv:"
+log "Upgrading pip/setuptools/wheel inside venv"
 run "${PIP_BIN}" --version
-run "${PIP_BIN}" install --upgrade pip setuptools wheel
+run_tee "${PIP_BIN}" install --upgrade pip setuptools wheel
 run "${PY_BIN}" -V
 
 ########################################
@@ -136,6 +258,11 @@ EOF
   run ${SUDO} tee "${ENV_FILE}" >/dev/null < "${tmpfile}"
   run ${SUDO} chmod 0644 "${ENV_FILE}"
   rm -f "${tmpfile}"
+
+  if [ "${VERBOSE}" -ge 2 ]; then
+    log "ENV_FILE contents:"
+    run cat "${ENV_FILE}"
+  fi
 }
 create_env_file
 
@@ -155,12 +282,20 @@ else
   for REQ in "${REQ_FILES[@]}"; do
     SERVICE_DIR="$(dirname "${REQ}")"
     SERVICE_NAME="$(basename "${SERVICE_DIR}")"
-    log "[${COUNT_REQ}/${TOTAL_REQ}] Installing requirements for service '${SERVICE_NAME}'"
-    if [ "${VERBOSE}" = "1" ]; then
-      run wc -l "${REQ}"
+    log "[${COUNT_REQ}/${TOTAL_REQ}] Installing requirements for service '${SERVICE_NAME}' (${REQ})"
+
+    if [ "${VERBOSE}" -ge 1 ]; then
+      run wc -l "${REQ}" || true
     fi
+
     # ensure we install into the venv
-    run "${PIP_BIN}" install --require-virtualenv -r "${REQ}"
+    run_tee "${PIP_BIN}" install --require-virtualenv -r "${REQ}"
+
+    if [ "${VERBOSE}" -ge 2 ]; then
+      log "pip freeze (tail) after '${SERVICE_NAME}':"
+      run "${PIP_BIN}" freeze | tail -n 20 || true
+    fi
+
     COUNT_REQ=$((COUNT_REQ + 1))
   done
   log "All Python requirements installed."
@@ -179,17 +314,27 @@ if [ "${TOTAL_SH}" -eq 0 ]; then
   warn "No child install.sh scripts found. Skipping service setup stage."
 else
   COUNT_SH=1
-  export VENV_DIR USER_NAME ENV_FILE
+  export VENV_DIR USER_NAME ENV_FILE VERBOSE DEBUG_TRACE
+
   for SCRIPT in "${SCRIPTS[@]}"; do
     SERVICE_DIR="$(dirname "${SCRIPT}")"
     SERVICE_NAME="$(basename "${SERVICE_DIR}")"
-    log "[${COUNT_SH}/${TOTAL_SH}] Running install for service '${SERVICE_NAME}' at '${SERVICE_DIR}'"
-    (
-      cd "${SERVICE_DIR}"
-      run bash "./install.sh"
-    )
+
+    log "#######################################"
+    log "[${COUNT_SH}/${TOTAL_SH}] Service '${SERVICE_NAME}'"
+    log "Dir: ${SERVICE_DIR}"
+    log "Script: ${SCRIPT}"
+
+    if [ "${VERBOSE}" -ge 2 ]; then
+      log "Directory listing:"
+      run ls -la "${SERVICE_DIR}" || true
+    fi
+
+    run_service_script "${SERVICE_NAME}" "${SCRIPT}"
+
     COUNT_SH=$((COUNT_SH + 1))
   done
+
   log "All service install scripts executed successfully."
 fi
 
@@ -202,5 +347,4 @@ log "- Venv dir: ${VENV_DIR}"
 log "- Env file: ${ENV_FILE}"
 log "- Requirements processed: ${TOTAL_REQ}"
 log "- Install scripts executed: ${TOTAL_SH}"
-
 log "Bootstrap completed successfully."
